@@ -17,14 +17,24 @@ window.__ModuleLoader__.load({
 
     const CSS = `
 .sm-dock {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
   padding: 2px 4px;
   font-size: calc(var(--dsh-content-font-size-secondary, 13px) - 1px);
   line-height: calc(20px + var(--dsh-content-font-delta-secondary, 0px));
   color: var(--dsw-alias-label-tertiary);
+}
+.sm-host-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.sm-host-label {
+  color: var(--dsw-alias-label-tertiary);
+  margin-right: 2px;
 }
 .sm-dock-item {
   display: inline-flex;
@@ -39,6 +49,11 @@ window.__ModuleLoader__.load({
 .sm-dock-value {
   color: var(--dsw-alias-label-tertiary);
 }
+.sm-host-error {
+  color: var(--dsw-alias-label-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 `;
 
     function clamp(percent) {
@@ -50,6 +65,17 @@ window.__ModuleLoader__.load({
       return h('span', { className: 'sm-dock-item' },
         h('span', { className: 'sm-dock-name' }, name),
         h('span', { className: 'sm-dock-value' }, pct === null ? '—' : `${pct.toFixed(1)}%`));
+    }
+
+    function HostRow({ label, cpu, memory, disk, error }) {
+      return h('div', { className: 'sm-host-row' },
+        h('span', { className: 'sm-host-label' }, label),
+        error
+          ? h('span', { className: 'sm-host-error', title: error }, '—')
+          : h(React.Fragment, null,
+              h(MetricItem, { name: 'CPU', percent: cpu.percent }),
+              h(MetricItem, { name: 'Mem', percent: memory.percent }),
+              h(MetricItem, { name: 'Disk', percent: disk ? disk.percent : null })));
     }
 
     function ComposerMonitor({ t }) {
@@ -80,11 +106,31 @@ window.__ModuleLoader__.load({
 
       if (!data) return null;
 
-      const { cpu, memory, disk } = data;
-      return h('div', { className: 'sm-dock' },
-        h(MetricItem, { name: t('cpu'), percent: cpu.percent }),
-        h(MetricItem, { name: t('memory'), percent: memory.percent }),
-        h(MetricItem, { name: t('disk'), percent: disk ? disk.percent : null }));
+      const { local, servers } = data;
+      const rows = [];
+
+      rows.push(h(HostRow, {
+        key: 'local',
+        label: t('local'),
+        cpu: local.cpu,
+        memory: local.memory,
+        disk: local.disk,
+      }));
+
+      if (Array.isArray(servers)) {
+        for (const server of servers) {
+          rows.push(h(HostRow, {
+            key: server.id,
+            label: server.label || server.id,
+            cpu: server.error ? null : server.cpu,
+            memory: server.error ? null : server.memory,
+            disk: server.error ? null : server.disk,
+            error: server.error || null,
+          }));
+        }
+      }
+
+      return h('div', { className: 'sm-dock' }, rows);
     }
 
     function interpolate(template, vars) {
@@ -105,14 +151,10 @@ window.__ModuleLoader__.load({
         }, 'dsh-monitor: dock styles');
 
         const dictEn = {
-          cpu: 'CPU',
-          memory: 'Mem',
-          disk: 'Disk',
+          local: 'Local',
         };
         const dictZh = {
-          cpu: 'CPU',
-          memory: '内存',
-          disk: '磁盘',
+          local: '本机',
         };
 
         let t = (key) => dictEn[key] || key;

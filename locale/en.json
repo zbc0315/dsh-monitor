@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Dsh Monitor",
-    "description": "Shows this machine's CPU, memory, and disk usage below the composer."
+    "description": "Shows this machine's and remote servers' CPU, memory, and disk usage below the composer."
   }
 }
