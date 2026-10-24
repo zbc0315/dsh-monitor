@@ -130,6 +130,126 @@ window.__ModuleLoader__.load({
 .sm-option.sm-option-selected .sm-check {
   visibility: visible;
 }
+.sm-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  font: var(--dsw-font-s-14);
+  color: var(--dsw-alias-label-primary);
+}
+.sm-settings-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+.sm-settings-hint {
+  margin: 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+.sm-server-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sm-server-row {
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 10px;
+  padding: 12px;
+}
+.sm-server-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 12px;
+}
+.sm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.sm-field.sm-field-wide {
+  grid-column: 1 / -1;
+}
+.sm-label {
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+}
+.sm-input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+}
+.sm-input:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 0;
+}
+.sm-remove {
+  margin-top: 10px;
+  padding: 4px 10px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-state-error-primary);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.sm-remove:hover {
+  background: var(--dsw-alias-bg-layer-1);
+}
+.sm-settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.sm-add {
+  padding: 5px 12px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.sm-add:hover {
+  background: var(--dsw-alias-bg-layer-1);
+}
+.sm-save {
+  padding: 5px 16px;
+  border: 1px solid var(--dsw-alias-brand-primary);
+  border-radius: 6px;
+  background: var(--dsw-alias-brand-primary);
+  color: var(--dsw-alias-bg-base);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.sm-save:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.sm-status {
+  margin: 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+}
+.sm-status.sm-status-error {
+  color: var(--dsw-alias-state-error-primary);
+}
 `;
 
     function clamp(percent) {
@@ -252,6 +372,133 @@ window.__ModuleLoader__.load({
             h('span', { className: 'sm-check', 'aria-hidden': true }, '✓')))));
     }
 
+    function cloneServers(value) {
+      if (!Array.isArray(value)) return [];
+      return value.map((s) => ({
+        id: String(s?.id ?? ''),
+        label: String(s?.label ?? ''),
+        host: String(s?.host ?? ''),
+        port: String(s?.port ?? 22),
+        user: String(s?.user ?? 'root'),
+        keyPath: String(s?.keyPath ?? ''),
+      }));
+    }
+
+    function normalizeServers(draft) {
+      return draft.map((s) => ({
+        id: s.id.trim(),
+        label: s.label.trim(),
+        host: s.host.trim(),
+        port: Number(s.port) || 22,
+        user: s.user.trim() || 'root',
+        keyPath: s.keyPath.trim(),
+      }));
+    }
+
+    function emptyServerDraft() {
+      return { id: '', label: '', host: '', port: '22', user: 'root', keyPath: '' };
+    }
+
+    function ServerField({ label, hint, value, onChange, wide }) {
+      return h('label', { className: 'sm-field' + (wide ? ' sm-field-wide' : '') },
+        h('span', { className: 'sm-label' }, label),
+        h('input', {
+          type: 'text',
+          className: 'sm-input',
+          value,
+          placeholder: hint || undefined,
+          onChange: (event) => onChange(event.target.value),
+        }));
+    }
+
+    // The row's configuration page: lists every configured remote server and
+    // lets the user add, edit, or remove entries. `form` is the ConfigPageForm
+    // the plugin-manager page injects for this row (`view: 'page'`); `view:
+    // 'summary'` is the one-liner shown as the row's description.
+    function ServerSettings({ view, form, t }) {
+      if (view === 'summary') {
+        return h('span', null, t('settingsSummary'));
+      }
+
+      const serversValue = form?.state?.value?.servers;
+      const [draft, setDraft] = React.useState(null);
+      const [dirty, setDirty] = React.useState(false);
+      const [saving, setSaving] = React.useState(false);
+      const [error, setError] = React.useState(null);
+      const [saved, setSaved] = React.useState(false);
+      const seededRef = React.useRef(false);
+
+      React.useEffect(() => {
+        if (!seededRef.current && Array.isArray(serversValue)) {
+          seededRef.current = true;
+          setDraft(cloneServers(serversValue));
+        }
+      }, [serversValue]);
+
+      function update(index, field, value) {
+        setDraft((prev) => prev.map((s, i) => (i === index ? { ...s, [field]: value } : s)));
+        setDirty(true);
+        setSaved(false);
+        setError(null);
+      }
+
+      function remove(index) {
+        setDraft((prev) => prev.filter((_, i) => i !== index));
+        setDirty(true);
+        setSaved(false);
+        setError(null);
+      }
+
+      function add() {
+        setDraft((prev) => [...(prev ?? []), emptyServerDraft()]);
+        setDirty(true);
+        setSaved(false);
+        setError(null);
+      }
+
+      async function save() {
+        if (!draft) return;
+        const next = normalizeServers(draft);
+        if (next.some((s) => !s.id || !s.host)) {
+          setError(t('validationError'));
+          return;
+        }
+        setSaving(true);
+        setError(null);
+        const ok = await form.mutate([{ op: 'set', path: ['servers'], value: next }]);
+        setSaving(false);
+        if (ok) {
+          setDirty(false);
+          setSaved(true);
+        } else {
+          setError(t('saveFailed'));
+        }
+      }
+
+      if (draft === null) {
+        return h('p', { className: 'sm-settings-hint' }, t('loadingServers'));
+      }
+
+      return h('div', { className: 'sm-settings' },
+        h('h3', { className: 'sm-settings-title' }, t('settingsTitle')),
+        h('p', { className: 'sm-settings-hint' }, t('settingsHint')),
+        h('ul', { className: 'sm-server-list' },
+          draft.map((server, index) => h('li', { className: 'sm-server-row', key: index },
+            h('div', { className: 'sm-server-grid' },
+              h(ServerField, { label: t('fieldId'), hint: t('idHint'), value: server.id, onChange: (v) => update(index, 'id', v) }),
+              h(ServerField, { label: t('fieldLabel'), value: server.label, onChange: (v) => update(index, 'label', v) }),
+              h(ServerField, { label: t('fieldHost'), hint: t('hostHint'), value: server.host, onChange: (v) => update(index, 'host', v) }),
+              h(ServerField, { label: t('fieldPort'), value: server.port, onChange: (v) => update(index, 'port', v) }),
+              h(ServerField, { label: t('fieldUser'), value: server.user, onChange: (v) => update(index, 'user', v) }),
+              h(ServerField, { label: t('fieldKeyPath'), value: server.keyPath, onChange: (v) => update(index, 'keyPath', v), wide: true })),
+            h('button', { type: 'button', className: 'sm-remove', onClick: () => remove(index) }, t('removeServer'))))),
+        h('div', { className: 'sm-settings-actions' },
+          h('button', { type: 'button', className: 'sm-add', onClick: add }, t('addServer')),
+          h('button', { type: 'button', className: 'sm-save', disabled: saving || !dirty, onClick: save }, t(saving ? 'saving' : 'save')),
+          saved ? h('p', { className: 'sm-status', role: 'status' }, t('saved')) : null,
+          error ? h('p', { className: 'sm-status sm-status-error', role: 'alert' }, error) : null));
+    }
+
     return {
       inject: ['slots', 'locale'],
       apply(ctx) {
@@ -270,12 +517,50 @@ window.__ModuleLoader__.load({
           cpu: 'CPU',
           memory: 'Mem',
           disk: 'Disk',
+          settingsSummary: 'Configure monitored servers',
+          settingsTitle: 'Monitored servers',
+          settingsHint: 'Add or remove remote servers to monitor. Changes take effect immediately.',
+          loadingServers: 'Loading servers…',
+          addServer: 'Add server',
+          removeServer: 'Remove',
+          save: 'Save',
+          saving: 'Saving…',
+          saved: 'Saved',
+          saveFailed: 'Save failed',
+          validationError: 'Each server needs an ID and a host.',
+          fieldId: 'ID',
+          fieldLabel: 'Label',
+          fieldHost: 'Host',
+          fieldPort: 'Port',
+          fieldUser: 'User',
+          fieldKeyPath: 'SSH key path',
+          idHint: 'e.g. node01',
+          hostHint: 'e.g. 192.168.1.10',
         };
         const dictZh = {
           local: '本机',
           cpu: 'CPU',
           memory: '内存',
           disk: '磁盘',
+          settingsSummary: '配置受监控的服务器',
+          settingsTitle: '受监控的服务器',
+          settingsHint: '添加或移除需要监控的远程服务器，修改立即生效。',
+          loadingServers: '正在读取服务器…',
+          addServer: '添加服务器',
+          removeServer: '移除',
+          save: '保存',
+          saving: '保存中…',
+          saved: '已保存',
+          saveFailed: '保存失败',
+          validationError: '每台服务器都需要填写 ID 和主机地址。',
+          fieldId: 'ID',
+          fieldLabel: '标签',
+          fieldHost: '主机',
+          fieldPort: '端口',
+          fieldUser: '用户',
+          fieldKeyPath: 'SSH 密钥路径',
+          idHint: '例如 node01',
+          hostHint: '例如 192.168.1.10',
         };
 
         let t = (key) => dictEn[key] || key;
@@ -296,6 +581,15 @@ window.__ModuleLoader__.load({
         ctx.slots.inject('conversation.composer.dock', () => ctx.slots.register(
           { name: 'conversation.composer.dock', id: 'dsh-monitor', order: 2 },
           () => h(ComposerMonitor, { t }),
+        ));
+
+        // The row's configuration page in the plugin manager. The row id in
+        // cordis.patch.yml is `dsh-monitor`, so the keyed slot is
+        // `dsh-monitor#dsh-monitor`. `form` (the ConfigPageForm) is injected
+        // when `view: 'page'`; `view: 'summary'` is the row's description.
+        ctx.slots.inject('plugins.row.config', () => ctx.slots.register(
+          { name: 'plugins.row.config', key: 'dsh-monitor#dsh-monitor', locale: 'dsh-monitor' },
+          (props) => h(ServerSettings, { ...props, t }),
         ));
       },
     };

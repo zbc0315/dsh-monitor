@@ -37,7 +37,24 @@ The plugin registers a `conversation.composer.dock` entry (`order: 2`, after the
 
 ## Configure remote servers
 
-Remote servers are read from the plugin's `servers` config array. Add them to your profile's `cordis.patch.yml` (the patch layer survives bundle upgrades):
+Remote servers are managed from the **plugin manager settings page** — no file editing needed:
+
+1. Open the plugin manager (⚙️ → Plugins).
+2. Open **dsh-monitor**, then its **dsh-monitor** row's *Configure* control.
+3. Add, edit, or remove servers, then **Save**.
+
+Each server has these fields:
+
+| Field | Required | Default | Notes |
+| --- | --- | --- | --- |
+| `id` | ✅ | — | Short unique name, e.g. `node01` |
+| `label` | — | falls back to `id` | Display name |
+| `host` | ✅ | — | IP or hostname, e.g. `192.168.1.10` |
+| `port` | — | `22` | SSH port |
+| `user` | — | `root` | SSH login user |
+| `keyPath` | — | `""` | Explicit private key path; empty uses the default ssh key |
+
+Changes take effect immediately (no restart). The same `servers` array can also be set declaratively in the profile's `cordis.patch.yml` (that patch layer survives bundle upgrades):
 
 ```yaml
 - id: dsh-monitor
@@ -71,7 +88,7 @@ Remote servers are read from the plugin's `servers` config array. Add them to yo
   });
   ```
 
-- **Client half** (`client.js`, browser) — polls `/api/dsh-monitor/metrics` with a same-origin `fetch` every 2 seconds and renders the selected host's reading into `conversation.composer.dock`, with a popover to switch hosts.
+- **Client half** (`client.js`, browser) — polls `/api/dsh-monitor/metrics` with a same-origin `fetch` every 2 seconds and renders the selected host's reading into `conversation.composer.dock`, with a popover to switch hosts. It also registers a `plugins.row.config` entry (key `dsh-monitor#dsh-monitor`) that renders the server editor on the plugin manager page, writing back through the settings `ConfigPageForm`.
 
 No persistent data is collected; all metrics are read on demand.
 
@@ -80,7 +97,7 @@ No persistent data is collected; all metrics are read on demand.
 ```
 .
 ├── index.js            # Host half: local + SSH sampling, /api fetch route
-├── client.js           # Client half: composer.dock UI + polling
+├── client.js           # Client half: composer.dock UI + server settings page
 ├── cordis.patch.yml    # Loader insert for the bundle
 ├── package.json        # Bundle manifest (dsh.bundle.patch + dsh.client)
 ├── locale/

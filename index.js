@@ -170,11 +170,17 @@ export const Config = Schema.object({
       user: Schema.string().default('root'),
       keyPath: Schema.string().default(''),
     }),
-  ).default([]),
+  ).default([]).volatile(),
 });
 
 export function apply(ctx, config) {
-  const servers = Array.isArray(config?.servers) ? config.servers : [];
+  // `servers` is volatile: `config.servers` is a live reference that the
+  // settings form updates in place, so the metrics route must read it fresh on
+  // every request rather than snapshotting it once at apply time.
+  const readServers = () => {
+    const value = config?.servers?.get?.() ?? config?.servers;
+    return Array.isArray(value) ? value : [];
+  };
 
   ctx.connection.fetch.register({
     path: '/api/dsh-monitor/metrics',
@@ -183,7 +189,7 @@ export function apply(ctx, config) {
     fetch: async () => {
       const local = await metrics();
       const remoteResults = await Promise.all(
-        servers.map(async (server) => {
+        readServers().map(async (server) => {
           const base = { id: server.id, label: server.label || server.id };
           try {
             const data = await cachedRemote(server);
