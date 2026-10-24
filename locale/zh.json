@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Dsh 监控",
+    "description": "在输入框下方显示本机的 CPU、内存与磁盘占用。"
+  }
+}
