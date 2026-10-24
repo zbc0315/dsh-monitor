@@ -6,18 +6,18 @@ A [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness) plug
 
 ## What it does
 
-Renders a compact, unobtrusive block under the composer (input box), one line per host:
+Renders a single compact entry under the composer (input box) showing the **currently selected host**:
 
 ```
-Local   CPU 12.3%  Mem 45.6%  Disk 70.5%
-node01  CPU 5.8%   Mem 9.9%   Disk 40.7%
+Local ▾   CPU 12.3%  Mem 45.6%  Disk 70.5%
 ```
 
-- The first line is the machine running DSH (the "local" host).
-- Each configured server adds one more line.
+Clicking the entry opens a popover that lists every host — the machine running DSH ("local") plus all configured servers — with their live readings. Pick one to make it the displayed host; the choice is remembered across reloads.
+
+- The local host is the machine running DSH.
 - Values refresh every 2 seconds; remote readings are cached for 5 seconds.
 - Follows the built-in composer statistics styling (same color as the token / cache-hit pills).
-- Bilingual labels (`Local` / `本机`), localized through the DSH locale service.
+- Bilingual labels (`Local` / `本机`, `Mem` / `内存`, `Disk` / `磁盘`), localized through the DSH locale service.
 
 ## Install
 
@@ -71,7 +71,7 @@ Remote servers are read from the plugin's `servers` config array. Add them to yo
   });
   ```
 
-- **Client half** (`client.js`, browser) — polls `/api/dsh-monitor/metrics` with a same-origin `fetch` every 2 seconds and renders one row per host into `conversation.composer.dock`.
+- **Client half** (`client.js`, browser) — polls `/api/dsh-monitor/metrics` with a same-origin `fetch` every 2 seconds and renders the selected host's reading into `conversation.composer.dock`, with a popover to switch hosts.
 
 No persistent data is collected; all metrics are read on demand.
 
