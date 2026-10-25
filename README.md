@@ -37,10 +37,10 @@ The plugin registers a `conversation.composer.dock` entry (`order: 2`, after the
 
 ## Configure remote servers
 
-Remote servers are managed from the **plugin manager settings page** — no file editing needed:
+Remote servers are managed from the **settings window** — no file editing needed:
 
-1. Open the plugin manager (⚙️ → Plugins).
-2. Open **dsh-monitor**, then its **dsh-monitor** row's *Configure* control.
+1. Open **Settings** (⚙️).
+2. Pick the **Monitor** tab in the left-hand nav.
 3. Add, edit, or remove servers, then **Save**.
 
 Each server has these fields:
@@ -88,7 +88,7 @@ Changes take effect immediately (no restart). The same `servers` array can also 
   });
   ```
 
-- **Client half** (`client.js`, browser) — polls `/api/dsh-monitor/metrics` with a same-origin `fetch` every 2 seconds and renders the selected host's reading into `conversation.composer.dock`, with a popover to switch hosts. It also registers a `plugins.row.config` entry (key `dsh-monitor#dsh-monitor`) that renders the server editor on the plugin manager page, writing back through the settings `ConfigPageForm`.
+- **Client half** (`client.js`, browser) — polls `/api/dsh-monitor/metrics` with a same-origin `fetch` every 2 seconds and renders the selected host's reading into `conversation.composer.dock`, with a popover to switch hosts. It also registers a `settings.section` entry (id `dsh-monitor`, order 16) that renders the server editor as its own tab in the Settings window, reading and writing the `dsh-monitor` namespace through the `configForms` service (`form.getSnapshot` / `form.subscribe` / `form.mutate`).
 
 No persistent data is collected; all metrics are read on demand.
 

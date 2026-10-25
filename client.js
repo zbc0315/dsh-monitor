@@ -411,16 +411,16 @@ window.__ModuleLoader__.load({
         }));
     }
 
-    // The row's configuration page: lists every configured remote server and
-    // lets the user add, edit, or remove entries. `form` is the ConfigPageForm
-    // the plugin-manager page injects for this row (`view: 'page'`); `view:
-    // 'summary'` is the one-liner shown as the row's description.
-    function ServerSettings({ view, form, t }) {
-      if (view === 'summary') {
-        return h('span', null, t('settingsSummary'));
-      }
+    // The settings-window page (a `settings.section` tab): lists every
+    // configured remote server and lets the user add, edit, or remove entries.
+    // `form` is the ConfigFormController injected from `ctx.configForms` for the
+    // `dsh-monitor` namespace; it exposes getSnapshot/subscribe/mutate.
+    function ServerSettings({ form, t }) {
+      const subscribe = React.useCallback((listener) => form.subscribe(listener), [form]);
+      const getSnapshot = React.useCallback(() => form.getSnapshot(), [form]);
+      const snapshot = React.useSyncExternalStore(subscribe, getSnapshot);
 
-      const serversValue = form?.state?.value?.servers;
+      const serversValue = snapshot.value?.servers;
       const [draft, setDraft] = React.useState(null);
       const [dirty, setDirty] = React.useState(false);
       const [saving, setSaving] = React.useState(false);
@@ -500,7 +500,7 @@ window.__ModuleLoader__.load({
     }
 
     return {
-      inject: ['slots', 'locale'],
+      inject: ['slots', 'locale', 'configForms'],
       apply(ctx) {
         ctx.effect(() => {
           const style = document.createElement('style');
@@ -517,7 +517,7 @@ window.__ModuleLoader__.load({
           cpu: 'CPU',
           memory: 'Mem',
           disk: 'Disk',
-          settingsSummary: 'Configure monitored servers',
+          settingsNavLabel: 'Monitor',
           settingsTitle: 'Monitored servers',
           settingsHint: 'Add or remove remote servers to monitor. Changes take effect immediately.',
           loadingServers: 'Loading servers…',
@@ -542,7 +542,7 @@ window.__ModuleLoader__.load({
           cpu: 'CPU',
           memory: '内存',
           disk: '磁盘',
-          settingsSummary: '配置受监控的服务器',
+          settingsNavLabel: '监控',
           settingsTitle: '受监控的服务器',
           settingsHint: '添加或移除需要监控的远程服务器，修改立即生效。',
           loadingServers: '正在读取服务器…',
@@ -583,12 +583,17 @@ window.__ModuleLoader__.load({
           () => h(ComposerMonitor, { t }),
         ));
 
-        // The row's configuration page in the plugin manager. The row id in
-        // cordis.patch.yml is `dsh-monitor`, so the keyed slot is
-        // `dsh-monitor#dsh-monitor`. `form` (the ConfigPageForm) is injected
-        // when `view: 'page'`; `view: 'summary'` is the row's description.
-        ctx.slots.inject('plugins.row.config', () => ctx.slots.register(
-          { name: 'plugins.row.config', key: 'dsh-monitor#dsh-monitor', locale: 'dsh-monitor' },
+        // The settings-window page: a top-level section (tab) contributed to the
+        // settings panel. `form` is injected from ctx.configForms for this
+        // bundle's namespace (`dsh-monitor`, the row id in cordis.patch.yml).
+        ctx.slots.inject('settings.section', () => ctx.slots.register(
+          {
+            name: 'settings.section',
+            id: 'dsh-monitor',
+            order: 16,
+            label: () => t('settingsNavLabel'),
+            inject: () => ({ form: ctx.configForms.get('dsh-monitor') }),
+          },
           (props) => h(ServerSettings, { ...props, t }),
         ));
       },
