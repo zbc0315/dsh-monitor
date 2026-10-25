@@ -1,6 +1,6 @@
 {
   "name": "@tom2012/dsh-monitor",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "DeepSeek Harness plugin: local and remote server CPU/memory/disk readout under the composer, with a Monitor tab in Settings",
   "type": "module",
   "license": "MIT",
