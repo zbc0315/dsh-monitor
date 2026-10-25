@@ -24,7 +24,7 @@ Clicking the entry opens a popover that lists every host — the machine running
 Install the bundle into a profile:
 
 ```sh
-dsh plugin --profile <profile-name> add dsh-monitor
+dsh plugin --profile <profile-name> add @tom2012/dsh-monitor
 ```
 
 Or, during local development, link the source directory directly:
@@ -58,7 +58,7 @@ Changes take effect immediately (no restart). The same `servers` array can also 
 
 ```yaml
 - id: dsh-monitor
-  name: "dsh-monitor"
+  name: "@tom2012/dsh-monitor"
   config:
     servers:
       - id: node01
@@ -75,7 +75,7 @@ Changes take effect immediately (no restart). The same `servers` array can also 
 
 ## How it works
 
-`dsh-monitor` is a **dual-face bundle plugin**:
+`@tom2012/dsh-monitor` is a **dual-face bundle plugin**:
 
 - **Host half** (`index.js`, Node.js) — samples local `os.cpus()`, `os.totalmem()/freemem()`, and `statfs('/')`, and, for each configured server, runs a short SSH command that reports CPU / memory / disk. It serves everything as JSON through the Harness connection layer:
 
